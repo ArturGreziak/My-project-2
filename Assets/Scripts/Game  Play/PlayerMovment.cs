@@ -1,7 +1,4 @@
-using System;
-using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
+ using UnityEngine;
 
 public class PlayerMovment : MonoBehaviour
 {
@@ -9,26 +6,25 @@ public class PlayerMovment : MonoBehaviour
     [SerializeField] private Rigidbody2D playerRidygbody;
     [SerializeField] private GroundChecker groundChecker;
     [SerializeField] private Transform legsTransform;
-    [SerializeField] private GameObject landingParticlePrafab;
-    [SerializeField] private float landingParticleLifetime = 1f;
+    [Header("Move")]
+    [SerializeField] private float moveSpeed = 8f;
     [SerializeField] private GameObject movementParticlePrefab;
     [SerializeField] private float movementParticleLifetime = 0.3f;
-    [Space(5)]
-    [Header("Setings")]
-    [SerializeField] private float moveSpeed = 1f;
-    [SerializeField] private float jumpPower = 50f;
-    [SerializeField] private float dubeljumpPower = 50f;
-    [Space(5)]
-    [Header("Sounds")]
-    [SerializeField] private AudioClip jumpSound;
+    [SerializeField] private AudioClip moveSound;
     [SerializeField] private float moveSoundDelay = 1f;
-     [SerializeField] private AudioClip moveSound;
+    [Header("Jump")]
+    [SerializeField] private float jumpPower = 8;
+    [SerializeField] private float dublejumpPower = 8;
+    [SerializeField] private AudioClip jumpSound;
+    [Header("Land")]
+    [SerializeField] private GameObject landingParticlePrafab;
+    [SerializeField] private float landingParticleLifetime = 1f;
 
 
-    private float moveSoundTime = 0f;
     private float  inputX;
-    private bool isDubleJump = false;
-    private bool isJumpingInput = false;
+    private bool hasDoubleJump = true;
+    private bool jumpRequested = false;
+    private float moveSoundTime = 0f;
     private Platform currentPlatform;
 
     private void Start()
@@ -67,22 +63,21 @@ public class PlayerMovment : MonoBehaviour
     {
         inputX = Input.GetAxis("Horizontal");
 
-        if (isMoving() && groundChecker)
+        if (groundChecker.IsGrounded)
         {
-            isDubleJump = true;
+            hasDoubleJump = true;
         }
-
         if (Input.GetKeyDown(KeyCode.Space))
         {
             if(groundChecker.IsGrounded)
             {
-                isDubleJump = true;
-                isJumpingInput = true;
+                jumpRequested = true;
                 AudioSource.PlayClipAtPoint(jumpSound, transform.position);
-            } else if(isDubleJump) 
+            }
+            else if( hasDoubleJump )
             {
-                isJumpingInput = true;
-                isDubleJump = false;
+                hasDoubleJump = false;
+                jumpRequested = true;
                 AudioSource.PlayClipAtPoint(jumpSound, transform.position);
             }
             
@@ -96,19 +91,20 @@ public class PlayerMovment : MonoBehaviour
 
     private void FixedUpdate()
     {
-        float moveInput = inputX * Time.fixedTime * moveSpeed;
-        playerRidygbody.velocity = new Vector2(moveInput, playerRidygbody.velocity.y);
-        if(isJumpingInput )
+        float speed = inputX * moveSpeed;
+        playerRidygbody.velocity = new Vector2(speed, playerRidygbody.velocity.y);
+        Debug.Log($"{playerRidygbody.velocity} -> i:{inputX} dt:{Time.fixedDeltaTime} spd:{moveSpeed}");
+        if(jumpRequested)
         {
             float currentJumpPower = jumpPower;
-            if(isDubleJump)
+            if(groundChecker.IsGrounded == false)
             {
-                currentJumpPower = jumpPower;
+                currentJumpPower = dublejumpPower;
             }
 
             playerRidygbody.velocity = new Vector2(playerRidygbody.velocity.x, 0);
-            playerRidygbody.AddForce(new Vector2(0, jumpPower),ForceMode2D.Impulse);
-            isJumpingInput = false;
+            playerRidygbody.AddForce(new Vector2(0, currentJumpPower), ForceMode2D.Impulse);
+            jumpRequested = false;
         }
     }
 
@@ -127,8 +123,6 @@ public class PlayerMovment : MonoBehaviour
             currentPlatform = null;
         }
     }
-
-    
 
     public bool isMoving()
     {
